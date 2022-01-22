@@ -1,0 +1,317 @@
+#include "shape.h"
+
+Sphere::Sphere(vec3 center, float radius)
+{
+	C = center;
+	r = radius;
+}
+
+bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
+{
+	vec3 center_to_origin = ray.Q - C;
+	
+	const float b = dot(center_to_origin, ray.D);
+	// since a = dot(D, D) = 1
+	const float discriminant_sqrt = sqrtf(powf(b, 2) - dot(center_to_origin, center_to_origin) + powf(r, 2));
+
+	if (-b - discriminant_sqrt > 0) {
+		out_intersection.t = -b - discriminant_sqrt;
+
+	}
+	else if (-b + discriminant_sqrt > 0) {
+		out_intersection.t = -b + discriminant_sqrt;
+	}
+	else {
+		return false;
+	}
+
+	out_intersection.P = ray.eval(out_intersection.t);
+	out_intersection.N = normalize(out_intersection.P - C);
+	out_intersection.object = this;
+
+	return true;
+}
+
+Box::Box(vec3 corner, vec3 diagonal)
+{
+	slabs[0].N = vec3(1, 0, 0);
+	slabs[0].d0 = -corner.x;
+	slabs[0].d1 = -(corner.x + diagonal.x);
+
+	slabs[1].N = vec3(0, 1, 0);
+	slabs[1].d0 = -corner.y;
+	slabs[1].d1 = -(corner.y + diagonal.y);
+
+
+	slabs[2].N = vec3(0, 0, 1);
+	slabs[2].d0 = -corner.z;
+	slabs[2].d1 = -(corner.z + diagonal.z);
+}
+
+bool Box::intersect(const Ray& ray, Intersection& intersection)
+{
+	Interval out_interval;
+	out_interval.intersect(ray, slabs, 3);
+
+	if (out_interval.t0 > out_interval.t1) {
+		return false;
+	}
+	if (out_interval.t0 > 0) {
+		intersection.t = out_interval.t0;
+	}
+	else if (out_interval.t1 > 0) {
+		intersection.t = out_interval.t1;
+	}
+	else {
+		return false;
+	}
+
+	intersection.P = ray.eval(intersection.t);
+	intersection.N = out_interval.N0;
+
+	return true;
+}
+
+Cylinder::Cylinder(vec3 base, vec3 axis, float radius)
+{
+	B = base;
+	A = axis;
+	r = radius;
+}
+
+bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
+{
+	
+	
+	Slab slab{ vec3(0,0,1), 0, -A.length() };
+
+	Ray ray_;
+
+	quat q = FromTwoVectors(A, Zaxis());
+
+	ray_.D = transformVector(q, ray.Q - B);
+	ray_.Q = transformVector(q, ray.D);
+
+	Interval first_interval;
+
+	first_interval.intersect(ray_, &slab);
+
+	// Second Interval
+	float a = dot(ray_.D.x, ray_.D.x) + dot(ray_.D.y, ray_.D.y);
+	float b = 2 * (dot(ray_.D.x, ray_.Q.x) + dot(ray_.D.y, ray_.Q.y));
+	float c = dot(ray_.Q.x, ray_.Q.x) + dot(ray_.Q.y, ray_.Q.y) - r * r;
+
+	float det = (b * b) - (4 * a * c);
+
+	if (det < 0) {
+		return false;
+	}
+
+	float b0 = (-b - sqrtf(det)) / (2 * a);
+	float b1 = (-b + sqrtf(det)) / (2 * a);
+
+	float t0 = first_interval.t0 > b0 ? first_interval.t0 : b0;
+	float t1 = first_interval.t1 > b1 ? first_interval.t1 : b1;
+
+
+	// No Intersection, the "off the corner" case
+	if (t0 > t1) {
+		return false;
+	}
+
+	if (t0 > 0) {
+		intersection.t = t0;
+	}
+	else if (t1 > 0) {
+		intersection.t = t1;
+	}
+	else {
+		return false;
+	}
+
+	intersection.P = ray.eval(intersection.t);
+
+	
+
+
+	return true;
+}
+
+Triangle::Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2)
+{
+	this->V0 = V0;
+	this->V1 = V1;
+	this->V2 = V2;
+
+	this->N0 = N0;
+	this->N1 = N1;
+	this->N2 = N2;
+}
+
+bool Triangle::intersect(const Ray& ray, Intersection& intersection)
+{
+	vec3 E1 = V1 - V0;
+	vec3 E2 = V2 - V0;
+	vec3 p = cross(ray.D, E2);
+	float d = dot(p, E1);
+
+	// NO INTERSECTION (RAY IS PARALLEL TO TRIANGLE)
+	if (d == 0) {
+		return false;
+	}
+
+	vec3 S = ray.Q - V0;
+	float u = dot(p, S) / d;
+
+	// RAY INTERSECTS PLANE, BUT OUTSIDE E2 edge
+	if((u < 0) || (u > 1)){
+		return false;
+	}
+
+	vec3 q = cross(S, E1);
+	float v = dot(ray.D, q) / d;
+
+	// RAY INTERSECTS PLANE, BUT OUTSIDE OTHER EDGES
+	if ((v < 0) || (u + v) > 1) {
+		return false;
+	}
+
+	float t = dot(E2, q) / d;
+
+	// RAY'S NEGATIVE HALF INTERSECTS TRIANGLE
+	if(t < 0) {
+		return false;
+	}
+
+	intersection.t = t;
+	intersection.P = ray.eval(t);
+
+	//TODO: If vertex normals are known: (1 - u - v)N0 + uN1 + vN2 and else
+	intersection.N = normalize(cross(E2, E1));
+
+	return true;
+}
+
+void Interval::initialize(float t0, float t1, vec3 N0, vec3 N1)
+{
+	this->t0 = t0;
+	this->t1 = t1;
+
+	this->N0 = N0;
+	this->N1 = N1;
+}
+
+void Interval::empty()
+{
+	this->t0 = 0;
+	this->t1 = -1;
+}
+
+void Interval::intersect(Intersection* other)
+{
+}
+
+bool Interval::intersect(const Ray& ray, const Slab* slab)
+{
+	assert(slab, "slab is nullptr");
+
+	float n_dot_d = dot(slab->N, ray.D);
+	float n_dot_q = dot(slab->N, ray.Q);
+
+
+	//TODO: comparing float with 0.0f? maybe with epsilon
+	// ray parallel to slab planes
+	if (n_dot_d == 0.0f) {
+
+		float s0 = n_dot_q + slab->d0;
+		float s1 = n_dot_q + slab->d1;
+
+		if (s0 * s1 < 0.0f) {
+			// ray.Q between planes
+			//initialize()
+			t0 = 0.0f;
+			t1 = FLT_MAX;
+		}
+		else {
+			// ray.Q outside planes
+			//empty()
+			t0 = 1.0f;
+			t1 = 0.0f;
+		}
+
+		return false;
+	}
+
+	// plane 0
+	t0 = -(slab->d0 + n_dot_q) / n_dot_d;
+
+	// plane 1
+	t1 = -(slab->d1 + n_dot_q) / n_dot_d;
+
+	if (t0 > t1) {
+		float temp = t0;
+		t0 = t1;
+		t1 = temp;
+	}
+
+	if (dot(ray.eval(t0), slab->N) >= 0) {
+		N0 = -slab->N;
+		N1 = slab->N;
+	}
+	else {
+		N0 = slab->N;
+		N1 = slab->N;
+	}
+
+	return true;
+
+}
+
+bool Interval::intersect(const Ray& ray, Slab slab[], uint32_t slabs_count)
+{
+	initialize();
+	
+	assert(slab, "slab is nullptr");
+
+	float t0_ = t0;
+	vec3 N0_ = N0;
+	float t1_ = t1;
+	vec3 N1_ = N1;
+
+
+
+	for (uint32_t i = 0; i < slabs_count; ++i) {
+
+		if (!intersect(ray, &slab[i]))
+			continue;
+
+		if (t0_ < t0) {
+			t0_ = t0;
+			N0_ = N0;
+		}
+
+		if (t1_ > t1) {
+			t1_ = t1;
+			N1_ = N1;
+		}
+	}
+
+
+	t0 = t0_;
+	t1 = t1_;
+	N0 = N0_;
+	N1 = N1_;
+
+	//TODO: This code might be worthless since intersect function returns false if t0 > t1
+	if (t0 > t1) {
+		float temp = t0;
+		t0 = t1;
+		t1 = temp;
+
+		vec3 temp_n = N0;
+		N0 = N1;
+		N1 = temp_n;
+	}
+
+	return true;
+}

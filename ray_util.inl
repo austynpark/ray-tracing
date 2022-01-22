@@ -32,26 +32,12 @@ typedef struct Intersection {
 	Shape* object;
 	vec3 P;
 	vec3 N;
-
+	// other 2D or 3D texture coord
 } Intersection;
 
 class Shape {
 public:
-	virtual bool intersect(Ray ray, Intersection& intersection) = 0;
+	virtual bool intersect(const Ray& ray, Intersection& intersection) = 0;
 };
-
-class Interval {
-public:
-	Interval();
-	~Interval();
-
-	Interval(vec3 t0, vec3 t1, vec3 N0, vec3 N1);
-
-	void empty();
-
-
-
-};
-
 
 #endif // !RAY_H
