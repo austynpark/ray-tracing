@@ -46,6 +46,7 @@ const vec3 Zaxis();
 
 vec3 transformVector(const quat& q, const vec3 v);
 quat FromTwoVectors(const vec3& a, const vec3& b);
+mat3 rotate_to_zaxis(const vec3& a);
 
 mat4 translate(const vec3& v);
 

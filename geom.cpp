@@ -26,7 +26,22 @@ quat FromTwoVectors(const vec3& a, const vec3& b) {
     float c = cos(ang/2.0);
     float s = sin(ang/2.0);
     return quat(c, s*axis);
+
 }
+
+mat3 rotate_to_zaxis(const vec3& a) {
+    vec3 z_axis = normalize(a);
+    vec3 x_axis = normalize(cross(Zaxis(), a));
+
+    if (x_axis == vec3(0, 0, 0)) {
+        x_axis = normalize(cross(Xaxis(), a));
+    }
+
+    vec3 y_axis = cross(z_axis, x_axis);
+
+    return glm::transpose(mat3(x_axis, y_axis, z_axis));
+}
+
 
 mat4 translate(const vec3& v) { return glm::translate(glm::mat4(1.0f), v); }
 

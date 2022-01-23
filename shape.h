@@ -18,7 +18,7 @@ typedef struct Interval {
 
 	void empty();
 
-	void intersect(Intersection* other);
+	void intersect(const Interval* other);
 	// single slab intersect with ray
 	bool intersect(const Ray& ray, const Slab* slab);
 	// multiple slab intersect with ray

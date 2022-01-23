@@ -1,4 +1,5 @@
 #include "shape.h"
+#include "geom.h"
 
 Sphere::Sphere(vec3 center, float radius)
 {
@@ -68,6 +69,7 @@ bool Box::intersect(const Ray& ray, Intersection& intersection)
 
 	intersection.P = ray.eval(intersection.t);
 	intersection.N = out_interval.N0;
+	intersection.object = this;
 
 	return true;
 }
@@ -87,14 +89,17 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 
 	Ray ray_;
 
-	quat q = FromTwoVectors(A, Zaxis());
+	//TODO: change glm Quaternion to rotation via 3x3 matrix
+	mat3 R = rotate_to_zaxis(A);
 
-	ray_.D = transformVector(q, ray.Q - B);
-	ray_.Q = transformVector(q, ray.D);
+	ray_.D = R * (ray.Q - B);
+	ray_.Q = R * ray.D;
 
 	Interval first_interval;
 
-	first_interval.intersect(ray_, &slab);
+	if (!first_interval.intersect(ray_, &slab)) {
+		return false;
+	}
 
 	// Second Interval
 	float a = dot(ray_.D.x, ray_.D.x) + dot(ray_.D.y, ray_.D.y);
@@ -111,7 +116,10 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 	float b1 = (-b + sqrtf(det)) / (2 * a);
 
 	float t0 = first_interval.t0 > b0 ? first_interval.t0 : b0;
+	vec3 N0 = first_interval.t0 > b0 ? first_interval.N0 : glm::transpose(R) * vec3(ray.Q.x + ray.D.x * b0, ray.Q.y + ray.D.y * b0, 0);
+
 	float t1 = first_interval.t1 > b1 ? first_interval.t1 : b1;
+	vec3 N1 = first_interval.t1 > b1 ? first_interval.N1 : glm::transpose(R) * vec3(ray.Q.x + ray.D.x * b1, ray.Q.y + ray.D.y * b1, 0);
 
 
 	// No Intersection, the "off the corner" case
@@ -121,18 +129,19 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 
 	if (t0 > 0) {
 		intersection.t = t0;
+		intersection.N = N0;
+
 	}
 	else if (t1 > 0) {
 		intersection.t = t1;
+		intersection.N = N1;
 	}
 	else {
 		return false;
 	}
 
 	intersection.P = ray.eval(intersection.t);
-
-	
-
+	intersection.object = this;
 
 	return true;
 }
@@ -188,6 +197,7 @@ bool Triangle::intersect(const Ray& ray, Intersection& intersection)
 
 	//TODO: If vertex normals are known: (1 - u - v)N0 + uN1 + vN2 and else
 	intersection.N = normalize(cross(E2, E1));
+	intersection.object = this;
 
 	return true;
 }
@@ -207,8 +217,17 @@ void Interval::empty()
 	this->t1 = -1;
 }
 
-void Interval::intersect(Intersection* other)
+void Interval::intersect(const Interval* other)
 {
+	if (t0 < other->t0) {
+		t0 = other->t0;
+		N0 = other->N0;
+	}
+	
+	if (t1 > other->t1) {
+		t1 = other->t1;
+		N1 = other->N1;
+	}
 }
 
 bool Interval::intersect(const Ray& ray, const Slab* slab)
