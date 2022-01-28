@@ -54,6 +54,8 @@ mat4 frustum(float const& left,    float const& right,
              float const& bottom,  float const& top, 
              float const& nearVal, float const& farVal);
 
+void swap(float& lhs, float& rhs);
+
 void Print(const std::string&, const float&);
 void Print(const std::string&, const double&);
 

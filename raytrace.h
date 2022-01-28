@@ -1,8 +1,10 @@
 ///////////////////////////////////////////////////////////////////////
 // A framework for a raytracer.
 ////////////////////////////////////////////////////////////////////////
+#include <memory>
 
 class Shape;
+struct Camera;
 
 const float PI = 3.14159f;
 const float Radians = PI/180.0f;    // Convert degrees to radians
@@ -74,10 +76,15 @@ class Realtime;
 class Scene {
 public:
     int width, height;
+    std::unique_ptr<Camera> camera;
     //Realtime* realtime;         // Remove this (realtime stuff)
+    
     Material* currentMat;
 
+    std::vector<Shape*> shapes;
+
     Scene();
+    ~Scene();
     void Finit();
 
     // The scene reader-parser will call the Command method with the

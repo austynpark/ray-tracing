@@ -68,6 +68,8 @@
       <DisableSpecificWarnings>4251;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <OpenMPSupport>true</OpenMPSupport>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard_C>Default</LanguageStandard_C>
     </ClCompile>
     <Link>
       <AdditionalDependencies>libs\assimp\lib\assimp.lib;libs\glfw-3.3.2.bin.WIN32\lib-vc2019\glfw3.lib;libs\glbinding.lib;gdi32.lib;winmm.lib;user32.lib;glu32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -125,12 +127,14 @@ xcopy .\libs\assimp\32\assimp.dll .\Release /Y /D</Command>
     <ClCompile Include="ray.cpp" />
     <ClCompile Include="raytrace.cpp" />
     <ClCompile Include="readAssimpFile.cpp" />
+    <ClCompile Include="realtime.cpp" />
     <ClCompile Include="rgbe.cpp" />
     <ClCompile Include="shape.cpp" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="raytrace.h" />
     <ClInclude Include="ray_util.inl" />
     <ClInclude Include="geom.h" />
+    <ClInclude Include="realtime.h" />
     <ClInclude Include="shape.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

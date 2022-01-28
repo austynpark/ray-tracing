@@ -4,6 +4,7 @@
 #include "geom.h"
 
 class Shape;
+class Material;
 
 /*
 * @param Q	Starting Point
@@ -38,6 +39,8 @@ typedef struct Intersection {
 class Shape {
 public:
 	virtual bool intersect(const Ray& ray, Intersection& intersection) = 0;
+	Material* material;
+
 };
 
 #endif // !RAY_H

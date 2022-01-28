@@ -1,10 +1,9 @@
 #include "shape.h"
 #include "geom.h"
 
-Sphere::Sphere(vec3 center, float radius)
+Sphere::Sphere(vec3 center, float radius, Material* mat) : Shape(), C(center), r(radius)
 {
-	C = center;
-	r = radius;
+	material = mat;
 }
 
 bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
@@ -13,7 +12,7 @@ bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
 	
 	const float b = dot(center_to_origin, ray.D);
 	// since a = dot(D, D) = 1
-	const float discriminant_sqrt = sqrtf(powf(b, 2) - dot(center_to_origin, center_to_origin) + powf(r, 2));
+	const float discriminant_sqrt = sqrtf(b * b - dot(center_to_origin, center_to_origin) + r * r);
 
 	if (-b - discriminant_sqrt > 0) {
 		out_intersection.t = -b - discriminant_sqrt;
@@ -33,8 +32,12 @@ bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
 	return true;
 }
 
-Box::Box(vec3 corner, vec3 diagonal)
+Box::Box(vec3 corner, vec3 diagonal, Material* mat) : Shape()
 {
+	material = mat;
+	this->corner = corner;
+	this->diag = diagonal;
+
 	slabs[0].N = vec3(1, 0, 0);
 	slabs[0].d0 = -corner.x;
 	slabs[0].d1 = -(corner.x + diagonal.x);
@@ -43,10 +46,10 @@ Box::Box(vec3 corner, vec3 diagonal)
 	slabs[1].d0 = -corner.y;
 	slabs[1].d1 = -(corner.y + diagonal.y);
 
-
 	slabs[2].N = vec3(0, 0, 1);
 	slabs[2].d0 = -corner.z;
 	slabs[2].d1 = -(corner.z + diagonal.z);
+
 }
 
 bool Box::intersect(const Ray& ray, Intersection& intersection)
@@ -59,43 +62,43 @@ bool Box::intersect(const Ray& ray, Intersection& intersection)
 	}
 	if (out_interval.t0 > 0) {
 		intersection.t = out_interval.t0;
+		intersection.N = normalize(out_interval.N0);
 	}
 	else if (out_interval.t1 > 0) {
 		intersection.t = out_interval.t1;
+		intersection.N = normalize(out_interval.N1);
 	}
 	else {
 		return false;
 	}
 
 	intersection.P = ray.eval(intersection.t);
-	intersection.N = out_interval.N0;
 	intersection.object = this;
 
 	return true;
 }
 
-Cylinder::Cylinder(vec3 base, vec3 axis, float radius)
+Cylinder::Cylinder(vec3 base, vec3 axis, float radius, Material* mat) : Shape(), B(base), A(axis), r(radius)
 {
-	B = base;
-	A = axis;
-	r = radius;
+	slab.N = vec3(0, 0, 1);
+	slab.d0 = 0.0f;
+	slab.d1 = -A.length();
+
+	material = mat;
 }
 
 bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 {
-	
-	
-	Slab slab{ vec3(0,0,1), 0, -A.length() };
-
 	Ray ray_;
 
-	//TODO: change glm Quaternion to rotation via 3x3 matrix
 	mat3 R = rotate_to_zaxis(A);
 
-	ray_.D = R * (ray.Q - B);
-	ray_.Q = R * ray.D;
+	ray_.Q = R * (ray.Q - B);
+	ray_.D = R * ray.D;
 
 	Interval first_interval;
+
+	first_interval.initialize();
 
 	if (!first_interval.intersect(ray_, &slab)) {
 		return false;
@@ -116,10 +119,10 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 	float b1 = (-b + sqrtf(det)) / (2 * a);
 
 	float t0 = first_interval.t0 > b0 ? first_interval.t0 : b0;
-	vec3 N0 = first_interval.t0 > b0 ? first_interval.N0 : glm::transpose(R) * vec3(ray.Q.x + ray.D.x * b0, ray.Q.y + ray.D.y * b0, 0);
+	vec3 N0 = first_interval.t0 > b0 ? first_interval.N0 : vec3(ray_.Q.x + ray_.D.x * t0, ray_.Q.y + ray_.D.y * t0, 0);
 
-	float t1 = first_interval.t1 > b1 ? first_interval.t1 : b1;
-	vec3 N1 = first_interval.t1 > b1 ? first_interval.N1 : glm::transpose(R) * vec3(ray.Q.x + ray.D.x * b1, ray.Q.y + ray.D.y * b1, 0);
+	float t1 = first_interval.t1 < b1 ? first_interval.t1 : b1;
+	vec3 N1 = first_interval.t1 < b1 ? first_interval.N1 : vec3(ray_.Q.x + ray_.D.x * t1, ray_.Q.y + ray_.D.y * t1, 0);
 
 
 	// No Intersection, the "off the corner" case
@@ -129,12 +132,12 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 
 	if (t0 > 0) {
 		intersection.t = t0;
-		intersection.N = N0;
+		intersection.N = normalize(glm::transpose(R) * N0);
 
 	}
 	else if (t1 > 0) {
 		intersection.t = t1;
-		intersection.N = N1;
+		intersection.N = normalize(glm::transpose(R) * N1);
 	}
 	else {
 		return false;
@@ -146,8 +149,10 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 	return true;
 }
 
-Triangle::Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2)
+Triangle::Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2, Material* mat) : Shape()
 {
+	material = mat;
+
 	this->V0 = V0;
 	this->V1 = V1;
 	this->V2 = V2;
@@ -273,13 +278,13 @@ bool Interval::intersect(const Ray& ray, const Slab* slab)
 		t1 = temp;
 	}
 
-	if (dot(ray.eval(t0), slab->N) >= 0) {
+	if (n_dot_d > 0) {
 		N0 = -slab->N;
 		N1 = slab->N;
 	}
 	else {
 		N0 = slab->N;
-		N1 = slab->N;
+		N1 = -slab->N;
 	}
 
 	return true;
@@ -323,13 +328,7 @@ bool Interval::intersect(const Ray& ray, Slab slab[], uint32_t slabs_count)
 
 	//TODO: This code might be worthless since intersect function returns false if t0 > t1
 	if (t0 > t1) {
-		float temp = t0;
-		t0 = t1;
-		t1 = temp;
-
-		vec3 temp_n = N0;
-		N0 = N1;
-		N1 = temp_n;
+		return false;
 	}
 
 	return true;

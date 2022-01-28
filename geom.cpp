@@ -31,11 +31,13 @@ quat FromTwoVectors(const vec3& a, const vec3& b) {
 
 mat3 rotate_to_zaxis(const vec3& a) {
     vec3 z_axis = normalize(a);
-    vec3 x_axis = normalize(cross(Zaxis(), a));
+    vec3 x_axis = cross(Zaxis(), a);
 
     if (x_axis == vec3(0, 0, 0)) {
-        x_axis = normalize(cross(Xaxis(), a));
+        x_axis = cross(Xaxis(), a);
     }
+
+    x_axis = normalize(x_axis);
 
     vec3 y_axis = cross(z_axis, x_axis);
 
@@ -60,6 +62,12 @@ mat4 frustum(float const& left,    float const& right,
     R[3][2]= -(2.0*farVal*nearVal) / (farVal-nearVal);
 
     return R;
+}
+
+void swap(float& lhs, float& rhs) {
+    float temp = lhs;
+    lhs = rhs;
+    rhs = temp;
 }
 
 void Print(const std::string& s, const float& m) { std::cout << s << ": " << m << '\n'; }
