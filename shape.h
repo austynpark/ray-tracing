@@ -39,6 +39,7 @@ public:
 	Sphere(vec3 center, float radius, Material* mat);
 
 	bool intersect(const Ray& ray, Intersection& intersection) override;
+	void bounding_box(vec3& out_min, vec3& out_max) override;
 private:
 	vec3 C;		// center point
 	float r;	// radius
@@ -50,6 +51,7 @@ public:
 	Box(vec3 corner, vec3 diagonal, Material* mat);
 
 	bool intersect(const Ray& ray, Intersection& intersection) override;
+	void bounding_box(vec3& out_min, vec3& out_max) override;
 private:
 	Slab slabs[3];
 	vec3 corner;
@@ -61,6 +63,7 @@ public:
 	Cylinder(vec3 base, vec3 axis, float radius, Material* mat);
 
 	bool intersect(const Ray& ray, Intersection& intersection) override;
+	void bounding_box(vec3& out_min, vec3& out_max) override;
 private:
 	vec3 B;		// Base
 	vec3 A;		// Axis
@@ -73,6 +76,7 @@ public:
 	Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2, Material* mat);
 
 	bool intersect(const Ray& ray, Intersection& intersection) override;
+	void bounding_box(vec3& out_min, vec3& out_max) override;
 private:
 	vec3 V0;
 	vec3 V1;

@@ -1,6 +1,8 @@
 #include "shape.h"
 #include "geom.h"
 
+#include <cmath>
+
 Sphere::Sphere(vec3 center, float radius, Material* mat) : Shape(), C(center), r(radius)
 {
 	material = mat;
@@ -30,6 +32,12 @@ bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
 	out_intersection.object = this;
 
 	return true;
+}
+
+void Sphere::bounding_box(vec3& out_min, vec3& out_max)
+{
+	out_min = C - r;
+	out_max = C + r;
 }
 
 Box::Box(vec3 corner, vec3 diagonal, Material* mat) : Shape()
@@ -76,6 +84,12 @@ bool Box::intersect(const Ray& ray, Intersection& intersection)
 	intersection.object = this;
 
 	return true;
+}
+
+void Box::bounding_box(vec3& out_min, vec3& out_max)
+{
+	out_min = corner;
+	out_max = corner + diag;
 }
 
 Cylinder::Cylinder(vec3 base, vec3 axis, float radius, Material* mat) : Shape(), B(base), A(axis), r(radius)
@@ -149,6 +163,20 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 	return true;
 }
 
+void Cylinder::bounding_box(vec3& out_min, vec3& out_max)
+{
+	vec3 p0 = B + r;
+	vec3 p1 = B - r;
+
+	vec3 p2 = A + p0;
+	vec3 p3 = A + p1;
+
+	for (int i = 0; i < 3; ++i) {
+		out_max[i] = fmaxf(fmaxf(p0[i], p1[i]), fmaxf(p2[i], p3[i]));
+		out_min[i] = fminf(fminf(p0[i], p1[i]), fminf(p2[i], p3[i]));
+	}
+}
+
 Triangle::Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2, Material* mat) : Shape()
 {
 	material = mat;
@@ -205,6 +233,14 @@ bool Triangle::intersect(const Ray& ray, Intersection& intersection)
 	intersection.object = this;
 
 	return true;
+}
+
+void Triangle::bounding_box(vec3& out_min, vec3& out_max)
+{
+	for (int i = 0; i < 3; ++i) {
+		out_min[i] = fminf(fminf(V0[i], V1[i]), V2[i]);
+		out_max[i] = fmaxf(fmaxf(V0[i], V1[i]), V2[i]);
+	}
 }
 
 void Interval::initialize(float t0, float t1, vec3 N0, vec3 N1)

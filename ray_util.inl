@@ -39,6 +39,7 @@ typedef struct Intersection {
 class Shape {
 public:
 	virtual bool intersect(const Ray& ray, Intersection& intersection) = 0;
+	virtual void bounding_box(vec3& out_min, vec3& out_max) = 0;
 	Material* material;
 
 };

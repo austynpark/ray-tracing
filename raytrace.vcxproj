@@ -122,6 +122,7 @@ xcopy .\libs\assimp\32\assimp.dll .\Release /Y /D</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="acceleration.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="geom.cpp" />
     <ClCompile Include="ray.cpp" />
@@ -130,6 +131,7 @@ xcopy .\libs\assimp\32\assimp.dll .\Release /Y /D</Command>
     <ClCompile Include="realtime.cpp" />
     <ClCompile Include="rgbe.cpp" />
     <ClCompile Include="shape.cpp" />
+    <ClInclude Include="acceleration.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="raytrace.h" />
     <ClInclude Include="ray_util.inl" />

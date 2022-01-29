@@ -10,11 +10,11 @@
 // Vector and ray conversions
 Ray RayFromBvh(const bvh::Ray<float>& r)
 {
-    return Ray(vec3FromBvh(r.origin), vec3FromBvh(r.direction));
+    return Ray{ vec3FromBvh(r.origin), vec3FromBvh(r.direction) };
 }
 bvh::Ray<float> RayToBvh(const Ray& r)
 {
-    return bvh::Ray<float>(vec3ToBvh(r.o), vec3ToBvh(r.d));
+    return bvh::Ray<float>(vec3ToBvh(r.Q), vec3ToBvh(r.D));
 }
 
 
@@ -45,8 +45,13 @@ SimpleBox& SimpleBox::extend(const vec3 v)
 
 SimpleBox BvhShape::bounding_box() const
 {
+    vec3 min(0);
+    vec3 max(0);
+
+    shape->bounding_box(min, max);
+
     //  Return the shape's bounding box.
-    return SimpleBox(); // FIX THIS
+    return SimpleBox(min).extend(max);
 }
 
 bvh::Vector3<float> BvhShape::center() const
@@ -64,7 +69,11 @@ std::optional<Intersection> BvhShape::intersect(const bvh::Ray<float>& bvhray) c
     // else return
     //    return the Intersection
 
-    return Intersection();  // FIX THIS 
+    Intersection result{};
+    
+    //if()
+
+    return result;  // FIX THIS 
 }
 
 AccelerationBvh::AccelerationBvh(std::vector<Shape*>& objs)
@@ -97,6 +106,4 @@ Intersection AccelerationBvh::intersect(const Ray& ray)
     }
     else
         return  Intersection();  // Return an IntersectionRecord which indicates NO-INTERSECTION
-
-
 }
