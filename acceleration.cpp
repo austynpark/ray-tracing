@@ -1,6 +1,7 @@
 #include "geom.h"
 #include "raytrace.h"
 #include "acceleration.h"
+#include "shape.h"
 
 #include <bvh/sweep_sah_builder.hpp>
 #include <bvh/single_ray_traverser.hpp>
@@ -16,7 +17,6 @@ bvh::Ray<float> RayToBvh(const Ray& r)
 {
     return bvh::Ray<float>(vec3ToBvh(r.Q), vec3ToBvh(r.D));
 }
-
 
 /////////////////////////////
 // SimpleBox
@@ -70,8 +70,13 @@ std::optional<Intersection> BvhShape::intersect(const bvh::Ray<float>& bvhray) c
     //    return the Intersection
 
     Intersection result{};
-    
-    //if()
+
+	if (!shape->intersect(RayFromBvh(bvhray), result))
+		return std::nullopt;
+
+	if (result.t < bvhray.tmin ||
+		result.t > bvhray.tmax)
+		return std::nullopt;
 
     return result;  // FIX THIS 
 }

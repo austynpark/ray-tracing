@@ -18,7 +18,6 @@ bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
 
 	if (-b - discriminant_sqrt > 0) {
 		out_intersection.t = -b - discriminant_sqrt;
-
 	}
 	else if (-b + discriminant_sqrt > 0) {
 		out_intersection.t = -b + discriminant_sqrt;
