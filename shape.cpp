@@ -95,9 +95,9 @@ Cylinder::Cylinder(vec3 base, vec3 axis, float radius, Material* mat) : Shape(),
 {
 	slab.N = vec3(0, 0, 1);
 	slab.d0 = 0.0f;
-	slab.d1 = -A.length();
+	slab.d1 = -length(A);
 
-	material = mat;
+ 	material = mat;
 }
 
 bool Cylinder::intersect(const Ray& ray, Intersection& intersection)

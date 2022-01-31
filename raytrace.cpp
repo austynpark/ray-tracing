@@ -17,6 +17,9 @@
 #include "geom.h"
 #include "raytrace.h"
 #include "realtime.h"
+#include "camera.h"
+#include "shape.h"
+#include "acceleration.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -27,9 +30,6 @@ std::random_device device;
 std::mt19937_64 RNGen(device());
 std::uniform_real_distribution<> myrandom(0.0, 1.0);
 // Call myrandom(RNGen) to get a uniformly distributed random number in [0,1].
-
-#include "camera.h"
-#include "shape.h"
 
 Scene::Scene() 
 { 
@@ -49,7 +49,18 @@ void Scene::Finit()
 }
 
 void Scene::triangleMesh(MeshData* mesh) 
-{ 
+{
+    for (const auto& triangle_index : mesh->triangles) {
+        shapes.push_back(new Triangle(
+            mesh->vertices[triangle_index[0]].pnt,
+            mesh->vertices[triangle_index[1]].pnt,
+            mesh->vertices[triangle_index[2]].pnt,
+            mesh->vertices[triangle_index[0]].nrm,
+            mesh->vertices[triangle_index[1]].nrm,
+            mesh->vertices[triangle_index[2]].nrm,
+            mesh->mat
+        ));
+    }
 }
 
 quat Orientation(int i, 
@@ -115,22 +126,20 @@ void Scene::Command(const std::vector<std::string>& strings,
         // syntax: light  r g b   
         // The rgb is the emission of the light
         // Creates a Material instance to be picked up by successive shapes
-        currentMat = new Light(vec3(f[1], f[2], f[3])); }
-   
+        currentMat = new Light(vec3(f[1], f[2], f[3])); 
+    }
     else if (c == "sphere") {
         // syntax: sphere x y z   r
         // Creates a Shape instance for a sphere defined by a center and radius
         // realtime->sphere(vec3(f[1], f[2], f[3]), f[4], currentMat);
         shapes.push_back(new Sphere(vec3(f[1], f[2], f[3]), f[4], currentMat));
     }
-
     else if (c == "box") {
         // syntax: box bx by bz   dx dy dz
         // Creates a Shape instance for a box defined by a corner point and diagonal vector
         // realtime->box(vec3(f[1], f[2], f[3]), vec3(f[4], f[5], f[6]), currentMat);
         shapes.push_back(new Box(vec3(f[1], f[2], f[3]), vec3(f[4], f[5], f[6]), currentMat));
     }
-
     else if (c == "cylinder") {
         // syntax: cylinder bx by bz   ax ay az  r
         // Creates a Shape instance for a cylinder defined by a base point, axis vector, and radius
@@ -150,9 +159,7 @@ void Scene::Command(const std::vector<std::string>& strings,
                           *toMat4(Orientation(6,strings,f));
         ReadAssimpFile(strings[1], modelTr);  
     
-    
-        //shapes.push_back(new Triangle());
-    
+        //Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2, Material * mat);    
     }
 
     
@@ -174,7 +181,18 @@ void Scene::TraceImage(Color* image, const int pass)
 
     int shapes_size = shapes.size();
 
-//#pragma omp parallel for schedule(dynamic, 1) // Magic: Multi-thread y loop
+    bvh_data = std::make_unique<AccelerationBvh>(shapes);
+
+    std::vector<Shape*> lights;
+
+    for (const auto& shape : shapes) {
+        if (shape->material->isLight()) {
+            lights.push_back(shape);
+        }
+    }
+
+
+#pragma omp parallel for schedule(dynamic, 1) // Magic: Multi-thread y loop
     for (int y=0;  y<height;  y++) {
 
         fprintf(stderr, "Rendering %4d\r", y);
@@ -189,22 +207,28 @@ void Scene::TraceImage(Color* image, const int pass)
 
 			Ray ray{camera->E, normalize(dx * vecX_world_space + dy * vecY_world_space - vecZ_world_space)};
 
-			Intersection intersect{};
+            Intersection intersect = bvh_data->intersect(ray);
 
-            for (int i = 0; i < shapes_size; ++i) {
-                
-                if (shapes.at(i)->intersect(ray, intersect)) {
-                    if (out_intersect.t > intersect.t) {
-                        out_intersect = intersect;
-                    }
+            
+
+
+            intersect.object->material->isLight();
+
+            image[y * width + x] = glm::abs(intersect.N);
+            image[y * width + x] = vec3((intersect.t - 5) / 4);
+            image[y * width + x] = intersect.object->material->Kd;
+
+#if 0
+            for (const auto& shape : shapes) {
+                if (shape->material->isLight()) {
+                    
+
+
+                    shape
+
                 }
             }
-            
-            image[y * width + x] = glm::abs(out_intersect.N);
-            //image[y * width + x] = vec3((out_intersect.t - 5) / 4);
-            
-
-            
+#endif
 
             /*
             if ((x-width/2)*(x-width/2)+(y-height/2)*(y-height/2) < 100*100)

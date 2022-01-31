@@ -2,6 +2,8 @@
 // A framework for a raytracer.
 ////////////////////////////////////////////////////////////////////////
 #include <memory>
+#include <vector>
+#include <string>
 
 class Shape;
 struct Camera;
@@ -72,6 +74,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 // Scene
 class Realtime;
+class AccelerationBvh;
 
 class Scene {
 public:
@@ -82,6 +85,7 @@ public:
     Material* currentMat;
 
     std::vector<Shape*> shapes;
+    std::unique_ptr<AccelerationBvh> bvh_data;
 
     Scene();
     ~Scene();

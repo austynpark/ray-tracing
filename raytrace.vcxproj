@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build" ToolsVersion="15.0">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -69,7 +69,6 @@
       <OpenMPSupport>true</OpenMPSupport>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>Default</LanguageStandard_C>
     </ClCompile>
     <Link>
       <AdditionalDependencies>libs\assimp\lib\assimp.lib;libs\glfw-3.3.2.bin.WIN32\lib-vc2019\glfw3.lib;libs\glbinding.lib;gdi32.lib;winmm.lib;user32.lib;glu32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -84,8 +83,8 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy .\libs\assimp\32\assimp.dll .\Debug /Y /D</Command>
-      <Command>xcopy .\libs\glbinding.dll .\Debug /Y /D
-xcopy .\libs\assimp\32\assimp.dll .\Debug/Y /D</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -101,6 +100,7 @@ xcopy .\libs\assimp\32\assimp.dll .\Debug/Y /D</Command>
       <OpenMPSupport>true</OpenMPSupport>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>libs\assimp\lib\assimp.lib;libs\glfw-3.3.2.bin.WIN32\lib-vc2019\glfw3.lib;libs\glbinding.lib;gdi32.lib;winmm.lib;user32.lib;glu32.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -116,13 +116,15 @@ xcopy .\libs\assimp\32\assimp.dll .\Debug/Y /D</Command>
       </AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy .\libs\assimp\32\assimp.dll .\Release /Y /D</Command>
-      <Command>xcopy .\libs\glbinding.dll .\Release /Y /D
-xcopy .\libs\assimp\32\assimp.dll .\Release /Y /D</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="acceleration.cpp" />
+    <ClCompile Include="acceleration.cpp">
+      <OpenMPSupport Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</OpenMPSupport>
+      <OpenMPSupport Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</OpenMPSupport>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="geom.cpp" />
     <ClCompile Include="ray.cpp" />

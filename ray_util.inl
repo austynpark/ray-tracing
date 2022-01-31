@@ -34,6 +34,9 @@ typedef struct Intersection {
 	vec3 P;
 	vec3 N;
 	// other 2D or 3D texture coord
+	
+	float distance() const { return t; }
+
 } Intersection;
 
 class Shape {
