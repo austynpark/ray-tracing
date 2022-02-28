@@ -130,7 +130,6 @@
     <ClCompile Include="ray.cpp" />
     <ClCompile Include="raytrace.cpp" />
     <ClCompile Include="readAssimpFile.cpp" />
-    <ClCompile Include="realtime.cpp" />
     <ClCompile Include="rgbe.cpp" />
     <ClCompile Include="shape.cpp" />
     <ClInclude Include="acceleration.h" />
@@ -138,7 +137,6 @@
     <ClInclude Include="raytrace.h" />
     <ClInclude Include="ray_util.inl" />
     <ClInclude Include="geom.h" />
-    <ClInclude Include="realtime.h" />
     <ClInclude Include="shape.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

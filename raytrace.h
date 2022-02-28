@@ -5,11 +5,10 @@
 #include <vector>
 #include <string>
 
+#include "ray_util.inl"
+
 class Shape;
 struct Camera;
-
-const float PI = 3.14159f;
-const float Radians = PI/180.0f;    // Convert degrees to radians
 
 ////////////////////////////////////////////////////////////////////////
 // Material: encapsulates a BRDF and communication with a shader.
@@ -73,8 +72,8 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 // Scene
-class Realtime;
 class AccelerationBvh;
+class Sphere;
 
 class Scene {
 public:
@@ -85,6 +84,7 @@ public:
     Material* currentMat;
 
     std::vector<Shape*> shapes;
+    std::vector<Shape*> lights;
     std::unique_ptr<AccelerationBvh> bvh_data;
 
     Scene();
@@ -105,5 +105,27 @@ public:
 
     // The main program will call the TraceImage method to generate
     // and return the image.  This is the Ray Tracer!
-    void TraceImage(Color* image, const int pass);
+    void TraceImage(Color* image, const unsigned int pass);
+
+    vec3 TracePath(Ray* ray);
+
+	// return the RGB radiance of the light
+	vec3 EvalRadiance(const Intersection& intersect);
+	Intersection SampleSphere(Sphere* sphere);
+	Intersection SampleLight();
+    float PdfLight(const Intersection& intersect);
+
+    // Convert between angular measure and area measure
+    float GeometryFactor(const Intersection& A, const Intersection& B);
+
+    // Choose a direction vector distributed around a given vector A
+    // c : cosine of the angle between the returned vector and A
+    // phi : an angle around A
+    vec3 SampleLobe(vec3 A, float c, float phi);
+
+    vec3 SampleBrdf(vec3 N);
+    float PdfBrdf(vec3 N, vec3 input_dir);
+    vec3 EvalScattering(const Intersection& intersect, vec3 input_dir);
+    
+
 };

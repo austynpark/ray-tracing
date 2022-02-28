@@ -3,6 +3,11 @@
 
 #include "geom.h"
 
+constexpr float EPSILON = 0.0001f;
+const float PI = 3.14159f;
+const float Radians = PI/180.0f;    // Convert degrees to radians
+
+
 class Shape;
 class Material;
 
@@ -27,8 +32,8 @@ typedef struct Ray {
 * @param P		Point of intersection (in world coordinates)
 * @param N		Normal of surface at interesection point (in world coordinates)
 */
-typedef struct Intersection {
-
+typedef struct Intersection { 
+ 
 	float t;
 	Shape* object;
 	vec3 P;
@@ -43,8 +48,11 @@ class Shape {
 public:
 	virtual bool intersect(const Ray& ray, Intersection& intersection) = 0;
 	virtual void bounding_box(vec3& out_min, vec3& out_max) = 0;
-	Material* material;
+	virtual ~Shape() {};
 
+	Material* material;
+	vec3 position;
+	float area;
 };
 
 #endif // !RAY_H

@@ -40,7 +40,7 @@ public:
 
 	bool intersect(const Ray& ray, Intersection& intersection) override;
 	void bounding_box(vec3& out_min, vec3& out_max) override;
-private:
+
 	vec3 C;		// center point
 	float r;	// radius
 

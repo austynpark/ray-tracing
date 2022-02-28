@@ -3,8 +3,10 @@
 
 #include <cmath>
 
-Sphere::Sphere(vec3 center, float radius, Material* mat) : Shape(), C(center), r(radius)
+Sphere::Sphere(vec3 center, float radius, Material* mat) : Shape() ,C(center) ,r(radius)
 {
+	area = 4 * PI * radius * radius;
+	position = center;
 	material = mat;
 }
 
@@ -16,10 +18,10 @@ bool Sphere::intersect(const Ray& ray, Intersection& out_intersection)
 	// since a = dot(D, D) = 1
 	const float discriminant_sqrt = sqrtf(b * b - dot(center_to_origin, center_to_origin) + r * r);
 
-	if (-b - discriminant_sqrt > 0) {
+	if (-b - discriminant_sqrt > EPSILON) {
 		out_intersection.t = -b - discriminant_sqrt;
 	}
-	else if (-b + discriminant_sqrt > 0) {
+	else if (-b + discriminant_sqrt > EPSILON) {
 		out_intersection.t = -b + discriminant_sqrt;
 	}
 	else {
@@ -41,6 +43,7 @@ void Sphere::bounding_box(vec3& out_min, vec3& out_max)
 
 Box::Box(vec3 corner, vec3 diagonal, Material* mat) : Shape()
 {
+	position = (corner + diagonal) * 0.5f;
 	material = mat;
 	this->corner = corner;
 	this->diag = diagonal;
@@ -67,11 +70,11 @@ bool Box::intersect(const Ray& ray, Intersection& intersection)
 	if (out_interval.t0 > out_interval.t1) {
 		return false;
 	}
-	if (out_interval.t0 > 0) {
+	if (out_interval.t0 > EPSILON) {
 		intersection.t = out_interval.t0;
 		intersection.N = normalize(out_interval.N0);
 	}
-	else if (out_interval.t1 > 0) {
+	else if (out_interval.t1 > EPSILON) {
 		intersection.t = out_interval.t1;
 		intersection.N = normalize(out_interval.N1);
 	}
@@ -97,6 +100,7 @@ Cylinder::Cylinder(vec3 base, vec3 axis, float radius, Material* mat) : Shape(),
 	slab.d0 = 0.0f;
 	slab.d1 = -length(A);
 
+	position = base + length(A) * normalize(A) * 0.5f;
  	material = mat;
 }
 
@@ -124,7 +128,7 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 
 	float det = (b * b) - (4 * a * c);
 
-	if (det < 0) {
+	if (det < EPSILON) {
 		return false;
 	}
 
@@ -143,12 +147,12 @@ bool Cylinder::intersect(const Ray& ray, Intersection& intersection)
 		return false;
 	}
 
-	if (t0 > 0) {
+	if (t0 > EPSILON) {
 		intersection.t = t0;
 		intersection.N = normalize(glm::transpose(R) * N0);
 
 	}
-	else if (t1 > 0) {
+	else if (t1 > EPSILON) {
 		intersection.t = t1;
 		intersection.N = normalize(glm::transpose(R) * N1);
 	}
@@ -179,6 +183,7 @@ void Cylinder::bounding_box(vec3& out_min, vec3& out_max)
 Triangle::Triangle(vec3 V0, vec3 V1, vec3 V2, vec3 N0, vec3 N1, vec3 N2, Material* mat) : Shape()
 {
 	material = mat;
+	position = (V0 + V1 + V2) / 3.0f;
 
 	this->V0 = V0;
 	this->V1 = V1;
@@ -197,7 +202,7 @@ bool Triangle::intersect(const Ray& ray, Intersection& intersection)
 	float d = dot(p, E1);
 
 	// NO INTERSECTION (RAY IS PARALLEL TO TRIANGLE)
-	if (d == 0) {
+	if (d == EPSILON) {
 		return false;
 	}
 
@@ -205,7 +210,7 @@ bool Triangle::intersect(const Ray& ray, Intersection& intersection)
 	float u = dot(p, S) / d;
 
 	// RAY INTERSECTS PLANE, BUT OUTSIDE E2 edge
-	if((u < 0) || (u > 1)){
+	if((u < EPSILON) || (u > 1)){
 		return false;
 	}
 
@@ -213,14 +218,14 @@ bool Triangle::intersect(const Ray& ray, Intersection& intersection)
 	float v = dot(ray.D, q) / d;
 
 	// RAY INTERSECTS PLANE, BUT OUTSIDE OTHER EDGES
-	if ((v < 0) || (u + v) > 1) {
+	if ((v < EPSILON) || (u + v) > 1) {
 		return false;
 	}
 
 	float t = dot(E2, q) / d;
 
 	// RAY'S NEGATIVE HALF INTERSECTS TRIANGLE
-	if(t < 0) {
+	if(t < EPSILON) {
 		return false;
 	}
 
@@ -228,7 +233,7 @@ bool Triangle::intersect(const Ray& ray, Intersection& intersection)
 	intersection.P = ray.eval(t);
 
 	//TODO: If vertex normals are known: (1 - u - v)N0 + uN1 + vN2 and else
-	intersection.N = normalize(cross(E2, E1));
+	intersection.N = normalize(cross(E1, E2));
 	intersection.object = this;
 
 	return true;
@@ -313,7 +318,7 @@ bool Interval::intersect(const Ray& ray, const Slab* slab)
 		t1 = temp;
 	}
 
-	if (n_dot_d > 0) {
+	if (n_dot_d > EPSILON) {
 		N0 = -slab->N;
 		N1 = slab->N;
 	}
