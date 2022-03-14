@@ -240,10 +240,10 @@ void Scene::TraceImage(Color* image, const unsigned int max_pass)
     auto startTime = std::chrono::high_resolution_clock::now();
 
     for (unsigned int pass = 0; pass < max_pass; ++pass) {
-#pragma omp parallel for schedule(dynamic, 1) // Magic: Multi-thread y loop
+//#pragma omp parallel for schedule(dynamic, 1) // Magic: Multi-thread y loop
         for (int y = 0; y < height; ++y) {
 
-            fprintf(stderr, "Rendering %4d\r", y);
+            //fprintf(stderr, "Rendering %4d\r", y);
             for (int x = 0; x < width; ++x) {
 
                 // x, y to [-1, 1] sceen space
@@ -256,13 +256,9 @@ void Scene::TraceImage(Color* image, const unsigned int max_pass)
 
                 Color color{};
 
-
-
-
-                //image[y * width + x] = glm::abs(intersect.N);
-                //image[y * width + x] = vec3((intersect.t - 5) / 4);
-                //image[y * width + x] = intersect.object->material->Kd;
-                image[y * width + x] += TracePath(&ray);
+                color = TracePath(&ray);
+				if(!glm::any(glm::isnan(color)) && !glm::any(glm::isinf(color)))
+					image[y * width + x] += color;
             }
         }
 
@@ -292,6 +288,7 @@ vec3 Scene::TracePath(Ray* pRay)
     vec3 weight{ 1, 1, 1 }; // Accumulated weight
 
     Intersection intersect = bvh_data->intersect(*pRay);
+    vec3 out_dir = -pRay->D;
 
     if (intersect.object == nullptr) {
         return color;
@@ -308,19 +305,28 @@ vec3 Scene::TracePath(Ray* pRay)
         float p = PdfLight(L) / GeometryFactor(intersect, L); // Probability of L, converted to angular measure
         
         // Input dir for next shape & out dir for the current shape
-        vec3 input_dir = L.P - intersect.P;
+        vec3 input_dir = normalize(L.P - intersect.P);
         Ray shadow_ray{ intersect.P,input_dir }; //Trace ray from P toward L (called a shadow-ray)
         
         Intersection I = bvh_data->intersect(shadow_ray);
         
-        if (p > 0 && (I.object == L.object)) {
-            vec3 f = EvalScattering(intersect, input_dir);
-            color += 0.5f * weight * (f / p) * EvalRadiance(L);
+        if(I.object->material->isLight())
+            if (p > 0 && (I.object == L.object)) {
+            vec3 f = EvalScattering(out_dir, intersect, input_dir);
+            color += weight * (f / p) * EvalRadiance(L);
         }
     
 
         //Extend path
-        input_dir = SampleBrdf(intersect.N); // Choose a sample direction from P
+
+        float diffuse_prob = length(intersect.object->material->Kd);
+        float reflect_prob = length(intersect.object->material->Ks);
+        float s = diffuse_prob + reflect_prob;
+
+        diffuse_prob /= s;
+        reflect_prob /= s;
+
+        input_dir = SampleBrdf(out_dir, intersect, diffuse_prob, reflect_prob); // Choose a sample direction from P
         Ray Q{ intersect.P, input_dir };
 
         I = bvh_data->intersect(Q);
@@ -329,8 +335,8 @@ vec3 Scene::TracePath(Ray* pRay)
             break;
         }
 
-        vec3 f = EvalScattering(intersect, input_dir);
-        p = PdfBrdf(intersect.N, input_dir) * RussianRoulette;
+        vec3 f = EvalScattering(out_dir, intersect, input_dir);
+        p = PdfBrdf(out_dir, intersect, input_dir, diffuse_prob, reflect_prob) * RussianRoulette;
 
         if (p < 0.000001f) break; // Avoid division by zero or nearly zero
         weight *= f / p;
@@ -341,27 +347,15 @@ vec3 Scene::TracePath(Ray* pRay)
         }
 
         intersect = I;
+        out_dir = -input_dir;
     }
-
-/*
-    if (intersect.object) {
-        if (!intersect.object->material->isLight()) {
-            for (const auto& light : lights) {
-                color += intersect.object->material->Kd * dot(intersect.N, normalize(light->position - intersect.P)) + intersect.object->material->Ks;
-            }
-        }
-        else {
-            color = intersect.object->material->Kd;
-        }
-    }
-*/
 
     return color;
 }
 
 vec3 Scene::EvalRadiance(const Intersection& intersect)
 {
-    return intersect.object->material->Kd / PI;
+    return intersect.object->material->Kd;
 }
 
 Intersection Scene::SampleSphere(Sphere* sphere)
@@ -396,11 +390,12 @@ float Scene::PdfLight(const Intersection& intersect)
 float Scene::GeometryFactor(const Intersection& A, const Intersection& B)
 {
     vec3 D = A.P - B.P;
+    //D = normalize(D);
 
     return glm::abs(dot(A.N, D) * dot(B.N, D) / (dot(D, D) * dot(D, D)));
 }
 
-vec3 Scene::SampleLobe(vec3 A, float c, float phi)
+vec3 Scene::SampleLobe(const vec3& A, float c, float phi)
 {
     float s = sqrtf(1 - c * c);
     // Create vector K centered around Z-axis and rotate to A-axis
@@ -418,17 +413,84 @@ vec3 Scene::SampleLobe(vec3 A, float c, float phi)
     return K.x * B + K.y * C + K.z * A;
 }
 
-vec3 Scene::SampleBrdf(vec3 N)
+vec3 Scene::SampleBrdf(
+    const vec3& output_dir,
+    const Intersection& intersect,
+    float prob_diffuse, float prob_reflect)
 {
-    return SampleLobe(N, sqrtf(myrandom(RNGen)), 2 * PI * myrandom(RNGen));
+    float rand_num = myrandom(RNGen);
+
+    // diffuse
+    if (rand_num < prob_diffuse) {
+        return SampleLobe(intersect.N, sqrtf(myrandom(RNGen)), 2 * PI * myrandom(RNGen));
+    }
+
+    // reflect
+	// cos depends on the D() function used
+	// phong brdf = rand^(1/(alpha + 1))
+	vec3 m = SampleLobe(intersect.N, powf(myrandom(RNGen), 1 / (intersect.object->material->alpha + 1.0f)), 2 * PI * myrandom(RNGen));
+
+    return 2 * fabs(dot(output_dir, m)) * m - output_dir;
 }
 
-float Scene::PdfBrdf(vec3 N, vec3 input_dir)
+float Scene::PdfBrdf(const vec3& output_dir, const Intersection& intersect, const vec3& input_dir,
+    float prob_diffuse, float prob_reflect)
 {
-    return abs(dot(N, input_dir));
+    // probabilities of the vector input_dir for the diffuse and reflection
+    float Pd = fabs(dot(input_dir, intersect.N)) / PI;
+
+    vec3 m = normalize(output_dir + input_dir);
+
+    float Pr = intersect.distribution(m) * fabs(dot(intersect.N, input_dir)) / (4 * fabs(dot(input_dir, m)));
+
+
+    return Pd * prob_diffuse + Pr * prob_reflect;
 }
 
-vec3 Scene::EvalScattering(const Intersection& intersect, vec3 input_dir)
+vec3 Scene::EvalScattering(const vec3& output_dir, const Intersection& intersect, const vec3& input_dir)
 {
-    return abs(dot(intersect.N, input_dir)) * intersect.object->material->Kd / PI;
+    // diffuse
+    vec3 Ed = intersect.object->material->Kd / PI;
+
+    vec3 m = normalize(output_dir + input_dir);
+    // specular 
+    vec3 Er = intersect.distribution(m) * intersect.Gfactor(input_dir, output_dir, m) * intersect.Ffactor(dot(input_dir, m))
+        / (4 * fabs(dot(input_dir, intersect.N)) * fabs(dot(output_dir, intersect.N)));
+
+
+    return fabs(dot(intersect.N, input_dir)) * (Ed + Er);
 }
+
+float Intersection::distribution(const vec3& H) const
+{
+    if (dot(N, H) <= 0.0f) return 0.0f;
+
+    return ((object->material->alpha + 2.0f) * powf(dot(N, H), object->material->alpha)) / (2 * PI);
+}
+
+float Intersection::G1(const vec3& v, const vec3& m) const
+{
+    float vdotN = dot(v, N);
+
+    if (vdotN - 1.0f > EPSILON) return 1.0f;
+
+    if ((dot(v, m) / vdotN) <= 0.0f) return 0.0f;
+
+    float tan = sqrtf(1.0f - powf(vdotN, 2)) / vdotN;
+
+    if (tan < EPSILON) return 1.0f;
+
+    float a = sqrtf(object->material->alpha * 0.5f + 1) / tan;
+
+    if (a < 1.6f) {
+        return (3.535f * a + 2.181f * a * a) / (1.0f + 2.276f * a + 2.577 * a * a);
+    }
+
+    return 1.0f;
+}
+
+vec3 Intersection::Ffactor(float d) const
+{
+    return object->material->Ks + (vec3(1.0f) - object->material->Ks) * powf(1.0f - fabs(d), 5.0f);
+}
+

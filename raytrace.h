@@ -26,7 +26,6 @@ class Material
     Material(const vec3 d, const vec3 s, const float a) 
         : Kd(d), Ks(s), alpha(a), texid(0) {}
     Material(Material& o) { Kd=o.Kd;  Ks=o.Ks;  alpha=o.alpha;  texid=o.texid; }
-
     //virtual void apply(const unsigned int program);
 };
 
@@ -121,11 +120,16 @@ public:
     // Choose a direction vector distributed around a given vector A
     // c : cosine of the angle between the returned vector and A
     // phi : an angle around A
-    vec3 SampleLobe(vec3 A, float c, float phi);
+    vec3 SampleLobe(const vec3& A, float c, float phi);
 
-    vec3 SampleBrdf(vec3 N);
-    float PdfBrdf(vec3 N, vec3 input_dir);
-    vec3 EvalScattering(const Intersection& intersect, vec3 input_dir);
+    vec3 SampleBrdf(const vec3& output_dir,
+        const Intersection& intersect,
+        float prob_diffuse, float prob_reflect);
+
+    float PdfBrdf(const vec3& output_dir, const Intersection& intersect, const vec3& input_dir, float prob_diffuse, float prob_reflect);
+    vec3 EvalScattering(const vec3& output_dir, const Intersection& intersect, const vec3& input_dir);
+    
     
 
 };
+
